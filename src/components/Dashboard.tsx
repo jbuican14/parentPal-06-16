@@ -9,12 +9,14 @@ import QuickActions from './dashboard/QuickActions';
 import VoiceInput from './dashboard/VoiceInput';
 import DocumentUpload from './dashboard/DocumentUpload';
 import AIAssistant from './dashboard/AIAssistant';
+import TokenManager from './dashboard/TokenManager';
+import DataProcessor from './dashboard/DataProcessor';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
   const { events, loading: eventsLoading, addEvent, updateEvent, deleteEvent } = useEvents();
-  const [activeTab, setActiveTab] = useState<'schedule' | 'parser' | 'voice' | 'documents' | 'assistant'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'parser' | 'voice' | 'documents' | 'assistant' | 'processor'>('schedule');
 
   if (profileLoading || eventsLoading) {
     return (
@@ -69,6 +71,21 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleEventExtracted = (extractedEvents: any[]) => {
+    extractedEvents.forEach(event => {
+      handleAddEvent({
+        title: event.title,
+        date: event.date,
+        time: event.time,
+        location: event.location,
+        attendees: event.attendees || [],
+        type: event.type === 'meeting' ? 'school' : 
+              event.title.toLowerCase().includes('sports') ? 'sports' : 'school',
+        description: event.description
+      });
+    });
+  };
+
   // Transform database events to component format
   const transformedEvents = events.map(event => ({
     id: event.id,
@@ -102,6 +119,16 @@ const Dashboard: React.FC = () => {
                   }`}
                 >
                   Schedule
+                </button>
+                <button
+                  onClick={() => setActiveTab('processor')}
+                  className={`flex-shrink-0 py-3 px-4 rounded-xl font-medium transition-colors ${
+                    activeTab === 'processor'
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  AI Processor
                 </button>
                 <button
                   onClick={() => setActiveTab('parser')}
@@ -156,6 +183,12 @@ const Dashboard: React.FC = () => {
                   onDeleteEvent={handleDeleteEvent}
                 />
               )}
+              {activeTab === 'processor' && (
+                <DataProcessor 
+                  onEventExtracted={handleEventExtracted}
+                  className="border-0 shadow-none rounded-none"
+                />
+              )}
               {activeTab === 'parser' && (
                 <EventParser onAddEvent={handleAddEvent} />
               )}
@@ -173,6 +206,7 @@ const Dashboard: React.FC = () => {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            <TokenManager />
             <QuickActions 
               events={transformedEvents}
               onAddEvent={handleAddEvent}
