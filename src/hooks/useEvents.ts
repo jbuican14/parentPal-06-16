@@ -6,11 +6,11 @@ export interface FamilyEvent {
   id: string
   title: string
   description?: string
-  date: string
-  time: string
+  event_date: string
+  event_time: string
   location: string
   attendees: string[]
-  type: 'school' | 'personal' | 'medical' | 'sports'
+  event_type: 'school' | 'personal' | 'medical' | 'sports'
   has_conflict?: boolean
   user_id: string
   created_at: string
@@ -39,7 +39,7 @@ export function useEvents() {
         .from('family_events')
         .select('*')
         .eq('user_id', user.id)
-        .order('date', { ascending: true })
+        .order('event_date', { ascending: true })
 
       if (error) {
         console.error('Error fetching events:', error)
