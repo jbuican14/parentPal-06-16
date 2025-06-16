@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Mail, Eye, EyeOff, Shield, ArrowRight, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import PasswordGenerator from './PasswordGenerator';
 
 const AuthPage: React.FC = () => {
   const { signUp, signIn } = useAuth();
@@ -20,6 +21,7 @@ const AuthPage: React.FC = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showPasswordGenerator, setShowPasswordGenerator] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const validateForm = () => {
@@ -85,6 +87,41 @@ const AuthPage: React.FC = () => {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
+
+  const handlePasswordGenerated = (password: string) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      password,
+      confirmPassword: password 
+    }));
+    setShowPasswordGenerator(false);
+    // Clear any password-related errors
+    setErrors(prev => ({ 
+      ...prev, 
+      password: '', 
+      confirmPassword: '' 
+    }));
+  };
+
+  const getPasswordStrength = (password: string) => {
+    if (!password) return { strength: 0, label: '', color: '' };
+    
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[a-z]/.test(password)) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
+    if (/[^a-zA-Z\d]/.test(password)) score++;
+    
+    if (score <= 2) return { strength: score * 16, label: 'Weak', color: 'bg-red-500' };
+    if (score <= 3) return { strength: score * 16, label: 'Fair', color: 'bg-yellow-500' };
+    if (score <= 4) return { strength: score * 16, label: 'Good', color: 'bg-blue-500' };
+    if (score <= 5) return { strength: score * 16, label: 'Strong', color: 'bg-green-500' };
+    return { strength: 100, label: 'Very Strong', color: 'bg-green-600' };
+  };
+
+  const passwordStrength = getPasswordStrength(formData.password);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -159,9 +196,20 @@ const AuthPage: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password *
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  Password *
+                </label>
+                {isSignUp && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordGenerator(!showPasswordGenerator)}
+                    className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                  >
+                    Generate Strong Password
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -181,10 +229,33 @@ const AuthPage: React.FC = () => {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              
+              {isSignUp && formData.password && (
+                <div className="mt-2">
+                  <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                    <span>Password strength: {passwordStrength.label}</span>
+                    <span>{passwordStrength.strength}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-300 ${passwordStrength.color}`}
+                      style={{ width: `${passwordStrength.strength}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+              
               {errors.password && (
                 <p className="mt-1 text-sm text-red-600">{errors.password}</p>
               )}
             </div>
+
+            {isSignUp && showPasswordGenerator && (
+              <PasswordGenerator 
+                onPasswordGenerated={handlePasswordGenerated}
+                className="mb-4"
+              />
+            )}
 
             {isSignUp && (
               <div>
