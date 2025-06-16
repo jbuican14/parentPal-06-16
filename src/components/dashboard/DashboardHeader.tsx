@@ -1,12 +1,23 @@
 import React from 'react';
-import { User } from '../../App';
-import { Calendar, CheckCircle, AlertCircle } from 'lucide-react';
+import { Calendar, CheckCircle, AlertCircle, LogOut } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+import { Profile } from '../../lib/supabase';
 
 interface DashboardHeaderProps {
-  user: User | null;
+  user: Profile | null;
 }
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user }) => {
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   return (
     <div className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -24,11 +35,11 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user }) => {
             {/* Calendar Status */}
             <div className="flex items-center space-x-2">
               <Calendar className="w-5 h-5 text-gray-400" />
-              {user?.calendarConnected ? (
+              {user?.calendar_connected ? (
                 <div className="flex items-center space-x-1">
                   <CheckCircle className="w-4 h-4 text-green-500" />
                   <span className="text-sm text-gray-600">
-                    {user.calendarType === 'google' ? 'Google' : 'Apple'} Calendar
+                    {user.calendar_type === 'google' ? 'Google' : 'Apple'} Calendar
                   </span>
                 </div>
               ) : (
@@ -48,6 +59,13 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ user }) => {
                   </span>
                 </div>
               </div>
+              <button
+                onClick={handleSignOut}
+                className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
