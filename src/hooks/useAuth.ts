@@ -1,82 +1,76 @@
-import { useState, useEffect } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { useState, useEffect } from 'react'
+import { User } from '@supabase/supabase-js'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setLoading(false)
+      return
+    }
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
 
     // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => subscription.unsubscribe()
+  }, [])
 
   const signUp = async (email: string, password: string, name: string) => {
+    if (!isSupabaseConfigured) {
+      return { error: { message: 'Supabase not configured. Please connect to Supabase first.' } }
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          name,
-        },
-      },
-    });
-
-    if (error) throw error;
-
-    // Create profile
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          name,
-          email,
-        });
-
-      if (profileError) throw profileError;
-    }
-
-    return data;
-  };
+          name
+        }
+      }
+    })
+    return { data, error }
+  }
 
   const signIn = async (email: string, password: string) => {
+    if (!isSupabaseConfigured) {
+      return { error: { message: 'Supabase not configured. Please connect to Supabase first.' } }
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
-      password,
-    });
-
-    if (error) throw error;
-    return data;
-  };
+      password
+    })
+    return { data, error }
+  }
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-  };
+    if (!isSupabaseConfigured) {
+      return { error: null }
+    }
+
+    const { error } = await supabase.auth.signOut()
+    return { error }
+  }
 
   return {
     user,
-    session,
     loading,
     signUp,
     signIn,
     signOut,
-  };
+    isConfigured: isSupabaseConfigured
+  }
 }

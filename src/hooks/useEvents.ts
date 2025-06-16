@@ -1,100 +1,119 @@
-import { useState, useEffect } from 'react';
-import { supabase, FamilyEvent } from '../lib/supabase';
-import { useAuth } from './useAuth';
+import { useState, useEffect } from 'react'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { useAuth } from './useAuth'
+
+export interface FamilyEvent {
+  id: string
+  title: string
+  description?: string
+  date: string
+  time: string
+  location: string
+  attendees: string[]
+  type: 'school' | 'personal' | 'medical' | 'sports'
+  has_conflict?: boolean
+  user_id: string
+  created_at: string
+  updated_at: string
+}
 
 export function useEvents() {
-  const { user } = useAuth();
-  const [events, setEvents] = useState<FamilyEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth()
+  const [events, setEvents] = useState<FamilyEvent[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (user) {
-      fetchEvents();
-    } else {
-      setEvents([]);
-      setLoading(false);
+    if (!user || !isSupabaseConfigured) {
+      setLoading(false)
+      return
     }
-  }, [user]);
+
+    fetchEvents()
+  }, [user])
 
   const fetchEvents = async () => {
-    if (!user) return;
+    if (!user || !isSupabaseConfigured) return
 
     try {
       const { data, error } = await supabase
         .from('family_events')
         .select('*')
         .eq('user_id', user.id)
-        .order('event_date', { ascending: true });
+        .order('date', { ascending: true })
 
-      if (error) throw error;
-      setEvents(data || []);
+      if (error) {
+        console.error('Error fetching events:', error)
+      } else {
+        setEvents(data || [])
+      }
     } catch (error) {
-      console.error('Error fetching events:', error);
+      console.error('Error in fetchEvents:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const addEvent = async (eventData: Omit<FamilyEvent, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('family_events')
-        .insert({
-          ...eventData,
-          user_id: user.id,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      setEvents(prev => [...prev, data]);
-      return data;
-    } catch (error) {
-      console.error('Error adding event:', error);
-      throw error;
+    if (!user || !isSupabaseConfigured) {
+      return { error: { message: 'Supabase not configured' } }
     }
-  };
+
+    const { data, error } = await supabase
+      .from('family_events')
+      .insert([{ ...eventData, user_id: user.id }])
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error adding event:', error)
+      return { error }
+    }
+
+    setEvents(prev => [...prev, data])
+    return { data, error: null }
+  }
 
   const updateEvent = async (eventId: string, updates: Partial<FamilyEvent>) => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('family_events')
-        .update(updates)
-        .eq('id', eventId)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      setEvents(prev => prev.map(event => event.id === eventId ? data : event));
-      return data;
-    } catch (error) {
-      console.error('Error updating event:', error);
-      throw error;
+    if (!user || !isSupabaseConfigured) {
+      return { error: { message: 'Supabase not configured' } }
     }
-  };
+
+    const { data, error } = await supabase
+      .from('family_events')
+      .update(updates)
+      .eq('id', eventId)
+      .eq('user_id', user.id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating event:', error)
+      return { error }
+    }
+
+    setEvents(prev => prev.map(event => event.id === eventId ? data : event))
+    return { data, error: null }
+  }
 
   const deleteEvent = async (eventId: string) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('family_events')
-        .delete()
-        .eq('id', eventId)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      setEvents(prev => prev.filter(event => event.id !== eventId));
-    } catch (error) {
-      console.error('Error deleting event:', error);
-      throw error;
+    if (!user || !isSupabaseConfigured) {
+      return { error: { message: 'Supabase not configured' } }
     }
-  };
+
+    const { error } = await supabase
+      .from('family_events')
+      .delete()
+      .eq('id', eventId)
+      .eq('user_id', user.id)
+
+    if (error) {
+      console.error('Error deleting event:', error)
+      return { error }
+    }
+
+    setEvents(prev => prev.filter(event => event.id !== eventId))
+    return { error: null }
+  }
 
   return {
     events,
@@ -103,5 +122,6 @@ export function useEvents() {
     updateEvent,
     deleteEvent,
     refetch: fetchEvents,
-  };
+    isConfigured: isSupabaseConfigured
+  }
 }

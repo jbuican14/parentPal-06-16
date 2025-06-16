@@ -1,56 +1,37 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Check if Supabase environment variables are available
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+// Create a mock client if environment variables are not available
+const createSupabaseClient = () => {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('Supabase environment variables not found. Using mock client.')
+    
+    // Return a mock client that doesn't break the app
+    return {
+      auth: {
+        signUp: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+        signInWithPassword: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+        signOut: () => Promise.resolve({ error: null }),
+        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
+      },
+      from: () => ({
+        select: () => Promise.resolve({ data: [], error: null }),
+        insert: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+        update: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+        delete: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+        upsert: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
+      })
+    } as any
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey)
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createSupabaseClient()
 
-// Database types
-export interface Profile {
-  id: string;
-  name: string;
-  email: string;
-  calendar_connected: boolean;
-  calendar_type?: 'google' | 'apple';
-  created_at: string;
-  updated_at: string;
-}
-
-export interface FamilyEvent {
-  id: string;
-  user_id: string;
-  title: string;
-  description: string;
-  event_date: string;
-  event_time: string;
-  location: string;
-  attendees: string[];
-  event_type: 'school' | 'sports' | 'medical' | 'personal';
-  has_conflict: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface VoiceNote {
-  id: string;
-  user_id: string;
-  text: string;
-  duration: string;
-  is_processed: boolean;
-  extracted_event_id?: string;
-  created_at: string;
-}
-
-export interface UploadedDocument {
-  id: string;
-  user_id: string;
-  file_name: string;
-  file_type: string;
-  status: 'processing' | 'completed' | 'error';
-  summary: string;
-  created_at: string;
-}
+// Export a flag to check if Supabase is properly configured
+export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey)
