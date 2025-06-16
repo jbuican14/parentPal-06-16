@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import AuthPage from './AuthPage'
 
@@ -8,6 +8,27 @@ interface AuthWrapperProps {
 
 const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   const { user, loading, isConfigured } = useAuth()
+
+  // Prevent back-button access to protected routes
+  useEffect(() => {
+    if (!user && isConfigured) {
+      // Clear browser history to prevent back-button access
+      window.history.replaceState(null, '', window.location.pathname)
+      
+      // Add event listener to prevent back navigation
+      const handlePopState = (event: PopStateEvent) => {
+        if (!user) {
+          window.history.pushState(null, '', window.location.pathname)
+        }
+      }
+      
+      window.addEventListener('popstate', handlePopState)
+      
+      return () => {
+        window.removeEventListener('popstate', handlePopState)
+      }
+    }
+  }, [user, isConfigured])
 
   if (loading) {
     return (

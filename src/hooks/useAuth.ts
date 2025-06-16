@@ -57,12 +57,34 @@ export function useAuth() {
   }
 
   const signOut = async () => {
-    if (!isSupabaseConfigured) {
+    try {
+      // Clear all local storage data
+      localStorage.clear()
+      
+      // Clear session storage data
+      sessionStorage.clear()
+      
+      // Clear any cached data in memory
+      setUser(null)
+      
+      if (isSupabaseConfigured) {
+        // Sign out from Supabase
+        const { error } = await supabase.auth.signOut()
+        if (error) {
+          console.error('Error signing out from Supabase:', error)
+          return { error }
+        }
+      }
+      
+      // Force a page reload to clear any remaining state
+      // and prevent back-button access to protected routes
+      window.location.href = '/'
+      
       return { error: null }
+    } catch (error: any) {
+      console.error('Error during sign out:', error)
+      return { error: { message: error.message || 'Failed to sign out' } }
     }
-
-    const { error } = await supabase.auth.signOut()
-    return { error }
   }
 
   return {

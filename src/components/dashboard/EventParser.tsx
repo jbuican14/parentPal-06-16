@@ -1,16 +1,7 @@
 import React, { useState } from 'react';
 import { Zap, Calendar, Clock, MapPin, CheckCircle, AlertCircle, Copy, Sparkles } from 'lucide-react';
 import { FamilyEvent } from '../Dashboard';
-
-interface ParsedEvent {
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  description: string;
-  type: 'event' | 'deadline' | 'meeting';
-  attendees: string[];
-}
+import { aiService, ParsedEvent } from '../../services/ai-service';
 
 interface EventParserProps {
   onAddEvent: (event: Omit<FamilyEvent, 'id'>) => void;
@@ -21,6 +12,7 @@ const EventParser: React.FC<EventParserProps> = ({ onAddEvent }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [parsedEvents, setParsedEvents] = useState<ParsedEvent[]>([]);
   const [confidence, setConfidence] = useState<number>(0);
+  const [error, setError] = useState<string>('');
 
   const sampleEmails = [
     {
@@ -75,151 +67,36 @@ Coach Mike`
     }
   ];
 
-  const enhancedProcessText = (text: string): ParsedEvent[] => {
-    const events: ParsedEvent[] = [];
-    const lines = text.toLowerCase().split('\n');
-    
-    // Enhanced parsing logic
-    const datePatterns = [
-      /(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday),?\s*([a-z]+\s+\d{1,2}(?:st|nd|rd|th)?)/gi,
-      /([a-z]+\s+\d{1,2}(?:st|nd|rd|th)?),?\s*\d{4}/gi,
-      /\d{1,2}\/\d{1,2}\/\d{4}/gi
-    ];
-    
-    const timePatterns = [
-      /\d{1,2}:\d{2}\s*(?:am|pm)/gi,
-      /\d{1,2}\s*(?:am|pm)/gi
-    ];
-    
-    // Look for field trip patterns
-    if (text.toLowerCase().includes('field trip')) {
-      const museumMatch = text.match(/science museum|natural history museum|museum/i);
-      const dateMatch = text.match(/friday,?\s*march\s*15th?/i) || text.match(/march\s*15/i);
-      const timeMatch = text.match(/9:00\s*am.*?3:00\s*pm/i);
-      
-      if (museumMatch && dateMatch) {
-        events.push({
-          title: "Science Museum Field Trip",
-          date: "March 15, 2024",
-          time: timeMatch ? "9:00 AM - 3:00 PM" : "9:00 AM",
-          location: "Natural History Museum, 123 Museum Drive",
-          description: "4th grade class trip with packed lunch required",
-          type: "event",
-          attendees: ["Emma"]
-        });
-      }
-      
-      // Permission slip deadline
-      const deadlineMatch = text.match(/permission slip.*?due.*?march\s*13/i);
-      if (deadlineMatch) {
-        events.push({
-          title: "Permission Slip Due",
-          date: "March 13, 2024",
-          time: "End of day",
-          location: "School Office",
-          description: "Submit signed permission slip for field trip",
-          type: "deadline",
-          attendees: ["Parent"]
-        });
-      }
-    }
-    
-    // Look for conference patterns
-    if (text.toLowerCase().includes('parent-teacher conference') || text.toLowerCase().includes('conference')) {
-      const dates = text.match(/(?:tuesday|wednesday|thursday),?\s*march\s*\d{1,2}(?:st|nd|rd|th)?/gi);
-      const times = text.match(/\d{1,2}:\d{2}\s*pm/gi);
-      
-      if (dates && times) {
-        events.push({
-          title: "Parent-Teacher Conference",
-          date: dates[0].replace(/,/g, ''),
-          time: times[0],
-          location: "Room 204",
-          description: "Conference with teacher about student progress",
-          type: "meeting",
-          attendees: ["Emma", "Parent"]
-        });
-      }
-    }
-    
-    // Look for soccer/sports patterns
-    if (text.toLowerCase().includes('soccer') || text.toLowerCase().includes('game') || text.toLowerCase().includes('practice')) {
-      const gameMatches = text.match(/saturday.*?game.*?(\d{1,2}:\d{2}\s*am)/gi);
-      const practiceMatches = text.match(/wednesday.*?practice.*?(\d{1,2}:\d{2}\s*pm)/gi);
-      
-      if (gameMatches) {
-        events.push({
-          title: "Soccer Game vs Eagles",
-          date: "March 23, 2024",
-          time: "10:00 AM",
-          location: "Lincoln Park Field #2",
-          description: "Team Lightning soccer game",
-          type: "event",
-          attendees: ["Emma"]
-        });
-      }
-      
-      if (practiceMatches) {
-        events.push({
-          title: "Soccer Practice",
-          date: "March 27, 2024", 
-          time: "4:00 PM",
-          location: "Lincoln Park Field #1",
-          description: "Team Lightning practice session",
-          type: "event",
-          attendees: ["Emma"]
-        });
-      }
-      
-      if (text.toLowerCase().includes('tournament')) {
-        events.push({
-          title: "Soccer Tournament",
-          date: "March 30, 2024",
-          time: "8:00 AM",
-          location: "Riverside Complex",
-          description: "All-day tournament with multiple games",
-          type: "event",
-          attendees: ["Emma", "Parent"]
-        });
-      }
-      
-      if (text.toLowerCase().includes('team dinner')) {
-        events.push({
-          title: "Team Dinner",
-          date: "April 5, 2024",
-          time: "6:00 PM",
-          location: "Mario's Pizza",
-          description: "Team dinner - RSVP required by April 1st",
-          type: "event",
-          attendees: ["Emma", "Parent"]
-        });
-      }
-    }
-    
-    return events;
-  };
-
   const handleParse = async () => {
     if (!inputText.trim()) return;
 
     setIsProcessing(true);
     setParsedEvents([]);
+    setError('');
     
-    // Simulate AI processing with more realistic timing
-    await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 1000));
-    
-    const events = enhancedProcessText(inputText);
-    const processingConfidence = Math.min(95, 75 + Math.random() * 20);
-    
-    setParsedEvents(events);
-    setConfidence(processingConfidence);
-    setIsProcessing(false);
+    try {
+      const response = await aiService.parseEvents(inputText);
+      
+      if (response.success && response.data) {
+        setParsedEvents(response.data);
+        const avgConfidence = response.data.reduce((sum, event) => sum + event.confidence, 0) / response.data.length;
+        setConfidence(avgConfidence * 100);
+      } else {
+        setError(response.error || 'Failed to parse events');
+      }
+    } catch (error: any) {
+      console.error('Error parsing events:', error);
+      setError('An error occurred while parsing events. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleSampleClick = (sample: typeof sampleEmails[0]) => {
     setInputText(sample.content);
     setParsedEvents([]);
     setConfidence(0);
+    setError('');
   };
 
   const addEventToCalendar = (event: ParsedEvent) => {
@@ -374,6 +251,19 @@ Coach Mike`
         </div>
       )}
 
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+            <div>
+              <h3 className="font-semibold text-red-800">Error</h3>
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Results */}
       {parsedEvents.length > 0 && (
         <div>
@@ -398,9 +288,14 @@ Coach Mike`
                     {getEventIcon(event.type)}
                     <h4 className="font-semibold text-gray-900 ml-2">{event.title}</h4>
                   </div>
-                  <span className="text-xs px-2 py-1 bg-white rounded-full text-gray-600 border capitalize">
-                    {event.type}
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs px-2 py-1 bg-white rounded-full text-gray-600 border capitalize">
+                      {event.type}
+                    </span>
+                    <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full border">
+                      {(event.confidence * 100).toFixed(0)}%
+                    </span>
+                  </div>
                 </div>
                 
                 <div className="space-y-2 text-sm text-gray-600 mb-4">
@@ -447,7 +342,7 @@ Coach Mike`
       )}
 
       {/* No Results */}
-      {!isProcessing && inputText.trim() && parsedEvents.length === 0 && (
+      {!isProcessing && !error && inputText.trim() && parsedEvents.length === 0 && (
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
           <AlertCircle className="w-8 h-8 text-gray-400 mx-auto mb-3" />
           <h3 className="font-semibold text-gray-900 mb-2">No events detected</h3>

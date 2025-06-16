@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, User as UserIcon, Calendar, Clock, MapPin } from 'lucide-react';
-import { User } from '../../App';
+import { Bot, Send, User as UserIcon, Calendar, Clock, MapPin, Settings, BarChart3 } from 'lucide-react';
+import { Profile } from '../../hooks/useProfile';
 import { FamilyEvent } from '../Dashboard';
+import { aiService, AIResponse } from '../../services/ai-service';
 
 interface Message {
   id: string;
@@ -12,11 +13,12 @@ interface Message {
     label: string;
     action: () => void;
   }[];
+  isLoading?: boolean;
 }
 
 interface AIAssistantProps {
   events: FamilyEvent[];
-  user: User | null;
+  user: Profile | null;
 }
 
 const AIAssistant: React.FC<AIAssistantProps> = ({ events, user }) => {
@@ -30,6 +32,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ events, user }) => {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -40,76 +43,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ events, user }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  const generateResponse = async (userMessage: string): Promise<string> => {
-    const message = userMessage.toLowerCase();
-    
-    // Schedule-related queries
-    if (message.includes('schedule') || message.includes('today') || message.includes('tomorrow')) {
-      const todayEvents = events.filter(e => e.date === 'Today');
-      const tomorrowEvents = events.filter(e => e.date === 'Tomorrow');
-      
-      if (message.includes('today')) {
-        if (todayEvents.length === 0) {
-          return "You don't have any events scheduled for today. Enjoy your free time!";
-        }
-        return `You have ${todayEvents.length} event${todayEvents.length > 1 ? 's' : ''} today:\n\n${todayEvents.map(e => `• ${e.title} at ${e.time}`).join('\n')}`;
-      }
-      
-      if (message.includes('tomorrow')) {
-        if (tomorrowEvents.length === 0) {
-          return "No events scheduled for tomorrow. It's looking like a relaxed day!";
-        }
-        return `Tomorrow you have ${tomorrowEvents.length} event${tomorrowEvents.length > 1 ? 's' : ''}:\n\n${tomorrowEvents.map(e => `• ${e.title} at ${e.time}`).join('\n')}`;
-      }
-    }
-    
-    // Conflict-related queries
-    if (message.includes('conflict') || message.includes('overlap')) {
-      const conflictEvents = events.filter(e => e.hasConflict);
-      if (conflictEvents.length === 0) {
-        return "Good news! I don't see any scheduling conflicts in your current calendar.";
-      }
-      return `I found ${conflictEvents.length} scheduling conflict${conflictEvents.length > 1 ? 's' : ''}:\n\n${conflictEvents.map(e => `• ${e.title} on ${e.date}`).join('\n')}\n\nWould you like help resolving these conflicts?`;
-    }
-    
-    // Event-specific queries
-    if (message.includes('soccer') || message.includes('practice')) {
-      const soccerEvents = events.filter(e => e.title.toLowerCase().includes('soccer'));
-      if (soccerEvents.length > 0) {
-        const event = soccerEvents[0];
-        return `Emma's soccer practice is scheduled for ${event.date} at ${event.time} at ${event.location}. Don't forget to pack water and shin guards!`;
-      }
-    }
-    
-    if (message.includes('school') || message.includes('teacher')) {
-      const schoolEvents = events.filter(e => e.type === 'school');
-      if (schoolEvents.length > 0) {
-        return `Here are your upcoming school events:\n\n${schoolEvents.map(e => `• ${e.title} on ${e.date} at ${e.time}`).join('\n')}`;
-      }
-    }
-    
-    // Parenting tips
-    if (message.includes('tip') || message.includes('advice') || message.includes('help')) {
-      const tips = [
-        "Here's a parenting tip: Try to establish consistent routines for better family organization. Kids thrive on predictability!",
-        "Parenting tip: Use visual calendars for younger children so they can see what's coming up in their week.",
-        "Remember: It's okay to say no to some activities. Family downtime is just as important as scheduled events.",
-        "Tip: Prepare the night before! Lay out clothes, pack bags, and prep lunches to make mornings smoother.",
-        "Consider involving kids in schedule planning - it helps them develop time management skills and feel more in control."
-      ];
-      return tips[Math.floor(Math.random() * tips.length)];
-    }
-    
-    // Default responses
-    const defaultResponses = [
-      "I'm here to help with your family scheduling! You can ask me about today's events, upcoming activities, or request parenting tips.",
-      "I can help you manage your family calendar, resolve scheduling conflicts, and provide organization tips. What would you like to know?",
-      "Feel free to ask me about your schedule, specific events, or if you need any parenting advice!",
-    ];
-    
-    return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
-  };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
@@ -125,30 +58,47 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ events, user }) => {
     setInputMessage('');
     setIsTyping(true);
 
-    // Simulate thinking time
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+    try {
+      // Use AI service to generate response
+      const response: AIResponse<string> = await aiService.generateChatResponse(
+        inputMessage,
+        { events, user }
+      );
 
-    const response = await generateResponse(inputMessage);
-    
-    const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      type: 'assistant',
-      content: response,
-      timestamp: new Date(),
-      suggestedActions: inputMessage.toLowerCase().includes('conflict') ? [
-        {
-          label: 'View Conflicts',
-          action: () => alert('This would show detailed conflict view')
-        },
-        {
-          label: 'Suggest Times',
-          action: () => alert('This would suggest alternative times')
-        }
-      ] : undefined
-    };
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'assistant',
+        content: response.success 
+          ? response.data! 
+          : response.error || 'Sorry, I encountered an error. Please try again.',
+        timestamp: new Date(),
+        suggestedActions: inputMessage.toLowerCase().includes('conflict') ? [
+          {
+            label: 'View Conflicts',
+            action: () => alert('This would show detailed conflict view')
+          },
+          {
+            label: 'Suggest Times',
+            action: () => alert('This would suggest alternative times')
+          }
+        ] : undefined
+      };
 
-    setMessages(prev => [...prev, assistantMessage]);
-    setIsTyping(false);
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Error generating AI response:', error);
+      
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'assistant',
+        content: 'I apologize, but I encountered an error while processing your request. Please try again.',
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -165,19 +115,50 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ events, user }) => {
     "Give me a parenting tip"
   ];
 
+  const aiStats = aiService.getStats();
+
   return (
     <div className="flex flex-col h-[600px]">
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center">
-          <div className="bg-indigo-100 p-2 rounded-full mr-3">
-            <Bot className="w-6 h-6 text-indigo-600" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="bg-indigo-100 p-2 rounded-full mr-3">
+              <Bot className="w-6 h-6 text-indigo-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">AI Assistant</h2>
+              <p className="text-sm text-gray-600">Ask me about your family schedule</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">AI Assistant</h2>
-            <p className="text-sm text-gray-600">Ask me about your family schedule</p>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setShowStats(!showStats)}
+              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+              title="AI Stats"
+            >
+              <BarChart3 className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => aiService.clearCache()}
+              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+              title="Clear Cache"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
           </div>
         </div>
+        
+        {showStats && (
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs">
+            <div className="grid grid-cols-2 gap-2">
+              <div>Cache Size: {aiStats.cacheSize}</div>
+              <div>Model: {aiStats.config.model}</div>
+              <div>Rate Limit: {aiStats.config.rateLimitPerMinute}/min</div>
+              <div>Status: {aiStats.isInitialized ? 'Ready' : 'Initializing'}</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Quick Questions */}

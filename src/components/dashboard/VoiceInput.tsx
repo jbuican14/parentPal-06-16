@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Mic, MicOff, Square, Play, Pause, Calendar, Clock } from 'lucide-react';
+import { aiService, ParsedEvent } from '../../services/ai-service';
 
 interface VoiceNote {
   id: string;
@@ -7,14 +8,14 @@ interface VoiceNote {
   timestamp: string;
   duration: string;
   isProcessed: boolean;
-  extractedEvent?: {
-    title: string;
-    date: string;
-    time: string;
-  };
+  extractedEvents?: ParsedEvent[];
 }
 
-const VoiceInput: React.FC = () => {
+interface VoiceInputProps {
+  onAddEvent: (event: any) => void;
+}
+
+const VoiceInput: React.FC<VoiceInputProps> = ({ onAddEvent }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -25,11 +26,18 @@ const VoiceInput: React.FC = () => {
       timestamp: "2 minutes ago",
       duration: "00:08",
       isProcessed: true,
-      extractedEvent: {
-        title: "Pick up Emma from soccer practice",
-        date: "Tomorrow",
-        time: "5:30 PM"
-      }
+      extractedEvents: [
+        {
+          title: "Pick up Emma from soccer practice",
+          date: "Tomorrow",
+          time: "5:30 PM",
+          location: "Soccer Field",
+          description: "Pick up from practice",
+          type: "event",
+          attendees: ["Emma"],
+          confidence: 0.92
+        }
+      ]
     },
     {
       id: '2',
@@ -37,11 +45,18 @@ const VoiceInput: React.FC = () => {
       timestamp: "5 minutes ago",
       duration: "00:12",
       isProcessed: true,
-      extractedEvent: {
-        title: "Jake's piano recital",
-        date: "Friday",
-        time: "7:00 PM"
-      }
+      extractedEvents: [
+        {
+          title: "Jake's piano recital",
+          date: "Friday",
+          time: "7:00 PM",
+          location: "Music Academy",
+          description: "Piano recital performance",
+          type: "event",
+          attendees: ["Jake"],
+          confidence: 0.95
+        }
+      ]
     }
   ]);
 
@@ -63,26 +78,40 @@ const VoiceInput: React.FC = () => {
     clearInterval((window as any).recordingTimer);
     setIsProcessing(true);
     
-    // Simulate processing
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Add mock transcribed note
-    const newNote: VoiceNote = {
-      id: Date.now().toString(),
-      text: "Don't forget about the parent-teacher conference next Wednesday at 3 PM in room 105",
-      timestamp: "Just now",
-      duration: `00:${recordingTime.toString().padStart(2, '0')}`,
-      isProcessed: true,
-      extractedEvent: {
-        title: "Parent-teacher conference",
-        date: "Next Wednesday",
-        time: "3:00 PM"
-      }
-    };
-    
-    setVoiceNotes(prev => [newNote, ...prev]);
-    setIsProcessing(false);
-    setRecordingTime(0);
+    try {
+      // Simulate voice transcription
+      const mockTranscript = "Don't forget about the parent-teacher conference next Wednesday at 3 PM in room 105";
+      
+      // Process with AI service
+      const response = await aiService.processVoiceNote(mockTranscript);
+      
+      const newNote: VoiceNote = {
+        id: Date.now().toString(),
+        text: mockTranscript,
+        timestamp: "Just now",
+        duration: `00:${recordingTime.toString().padStart(2, '0')}`,
+        isProcessed: true,
+        extractedEvents: response.success ? response.data : []
+      };
+      
+      setVoiceNotes(prev => [newNote, ...prev]);
+    } catch (error) {
+      console.error('Error processing voice note:', error);
+      
+      // Add note without extracted events on error
+      const newNote: VoiceNote = {
+        id: Date.now().toString(),
+        text: "Error processing voice note",
+        timestamp: "Just now",
+        duration: `00:${recordingTime.toString().padStart(2, '0')}`,
+        isProcessed: false
+      };
+      
+      setVoiceNotes(prev => [newNote, ...prev]);
+    } finally {
+      setIsProcessing(false);
+      setRecordingTime(0);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -91,9 +120,20 @@ const VoiceInput: React.FC = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const addToCalendar = (note: VoiceNote) => {
-    // Mock add to calendar functionality
-    alert(`Added "${note.extractedEvent?.title}" to calendar for ${note.extractedEvent?.date} at ${note.extractedEvent?.time}`);
+  const addToCalendar = (event: ParsedEvent) => {
+    const familyEvent = {
+      title: event.title,
+      date: event.date,
+      time: event.time,
+      location: event.location,
+      attendees: event.attendees,
+      type: event.title.toLowerCase().includes('soccer') ? 'sports' : 
+            event.title.toLowerCase().includes('school') || event.title.toLowerCase().includes('conference') ? 'school' : 'personal',
+      description: event.description
+    };
+    
+    onAddEvent(familyEvent);
+    alert(`Added "${event.title}" to calendar for ${event.date} at ${event.time}`);
   };
 
   return (
@@ -129,7 +169,7 @@ const VoiceInput: React.FC = () => {
           </div>
           
           <div className="text-lg font-semibold text-gray-900 mb-2">
-            {isRecording ? 'Recording...' : isProcessing ? 'Processing...' : 'Tap to record'}
+            {isRecording ? 'Recording...' : isProcessing ? 'Processing with AI...' : 'Tap to record'}
           </div>
           
           {isRecording && (
@@ -174,25 +214,40 @@ const VoiceInput: React.FC = () => {
                 <p className="text-gray-700 text-sm italic">"{note.text}"</p>
               </div>
               
-              {note.extractedEvent && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
-                  <div className="flex items-center mb-2">
-                    <Calendar className="w-4 h-4 text-indigo-600 mr-2" />
-                    <span className="text-sm font-medium text-indigo-800">Extracted Event:</span>
-                  </div>
-                  <div className="text-sm text-gray-700 mb-2">
-                    <strong>{note.extractedEvent.title}</strong>
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600 mb-3">
-                    <Clock className="w-4 h-4 mr-1" />
-                    {note.extractedEvent.date} at {note.extractedEvent.time}
-                  </div>
-                  <button
-                    onClick={() => addToCalendar(note)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Add to Calendar
-                  </button>
+              {note.extractedEvents && note.extractedEvents.length > 0 && (
+                <div className="space-y-2">
+                  <h5 className="font-medium text-gray-900">Extracted Events:</h5>
+                  {note.extractedEvents.map((event, index) => (
+                    <div key={index} className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h6 className="font-medium text-gray-900 mb-1">{event.title}</h6>
+                          <div className="text-sm text-gray-600">
+                            <div className="flex items-center mb-1">
+                              <Calendar className="w-4 h-4 mr-1" />
+                              {event.date} at {event.time}
+                            </div>
+                            <div>{event.location}</div>
+                            <div className="text-xs text-green-600 mt-1">
+                              Confidence: {(event.confidence * 100).toFixed(0)}%
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => addToCalendar(event)}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors"
+                        >
+                          Add to Calendar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {!note.isProcessed && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <p className="text-yellow-700 text-sm">Processing failed. Please try recording again.</p>
                 </div>
               )}
             </div>

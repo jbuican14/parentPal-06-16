@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Upload, FileText, Image, CheckCircle, AlertCircle, Calendar, Download } from 'lucide-react';
+import { aiService, DocumentAnalysis } from '../../services/ai-service';
 
 interface UploadedDocument {
   id: string;
@@ -7,16 +8,14 @@ interface UploadedDocument {
   type: 'email' | 'flyer' | 'form' | 'newsletter';
   uploadDate: string;
   status: 'processing' | 'completed' | 'error';
-  extractedEvents?: {
-    title: string;
-    date: string;
-    time: string;
-    location: string;
-  }[];
-  summary?: string;
+  analysis?: DocumentAnalysis;
 }
 
-const DocumentUpload: React.FC = () => {
+interface DocumentUploadProps {
+  onAddEvent: (event: any) => void;
+}
+
+const DocumentUpload: React.FC<DocumentUploadProps> = ({ onAddEvent }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDocument[]>([
     {
@@ -25,21 +24,34 @@ const DocumentUpload: React.FC = () => {
       type: 'newsletter',
       uploadDate: '2 hours ago',
       status: 'completed',
-      summary: 'Spring events schedule including field trips, conferences, and sports activities',
-      extractedEvents: [
-        {
-          title: 'Spring Break',
-          date: 'March 25-29, 2024',
-          time: 'All day',
-          location: 'No school'
-        },
-        {
-          title: 'Science Fair',
-          date: 'April 5, 2024',
-          time: '6:00 PM - 8:00 PM',
-          location: 'School Gymnasium'
-        }
-      ]
+      analysis: {
+        summary: 'Spring events schedule including field trips, conferences, and sports activities',
+        extractedEvents: [
+          {
+            title: 'Spring Break',
+            date: 'March 25-29, 2024',
+            time: 'All day',
+            location: 'No school',
+            description: 'Spring break vacation',
+            type: 'event',
+            attendees: [],
+            confidence: 0.98
+          },
+          {
+            title: 'Science Fair',
+            date: 'April 5, 2024',
+            time: '6:00 PM - 8:00 PM',
+            location: 'School Gymnasium',
+            description: 'Annual science fair presentation',
+            type: 'event',
+            attendees: [],
+            confidence: 0.95
+          }
+        ],
+        keyDates: ['March 25, 2024', 'April 5, 2024'],
+        actionItems: ['Submit permission slip by March 13', 'RSVP for team dinner by April 1'],
+        confidence: 0.89
+      }
     },
     {
       id: '2',
@@ -47,21 +59,34 @@ const DocumentUpload: React.FC = () => {
       type: 'form',
       uploadDate: '1 day ago',
       status: 'completed',
-      summary: 'Permission slip for museum field trip with deadline and requirements',
-      extractedEvents: [
-        {
-          title: 'Museum Field Trip',
-          date: 'March 15, 2024',
-          time: '9:00 AM - 3:00 PM',
-          location: 'Natural History Museum'
-        },
-        {
-          title: 'Permission Slip Deadline',
-          date: 'March 13, 2024',
-          time: 'End of day',
-          location: 'School Office'
-        }
-      ]
+      analysis: {
+        summary: 'Permission slip for museum field trip with deadline and requirements',
+        extractedEvents: [
+          {
+            title: 'Museum Field Trip',
+            date: 'March 15, 2024',
+            time: '9:00 AM - 3:00 PM',
+            location: 'Natural History Museum',
+            description: 'Educational field trip',
+            type: 'event',
+            attendees: [],
+            confidence: 0.92
+          },
+          {
+            title: 'Permission Slip Deadline',
+            date: 'March 13, 2024',
+            time: 'End of day',
+            location: 'School Office',
+            description: 'Submit signed permission slip',
+            type: 'deadline',
+            attendees: [],
+            confidence: 0.88
+          }
+        ],
+        keyDates: ['March 13, 2024', 'March 15, 2024'],
+        actionItems: ['Get permission slip signed', 'Pack lunch for field trip'],
+        confidence: 0.90
+      }
     }
   ]);
 
@@ -82,32 +107,52 @@ const DocumentUpload: React.FC = () => {
       
       setUploadedDocs(prev => [newDoc, ...prev]);
       
-      // Simulate processing
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Update with processed results
-      setUploadedDocs(prev => prev.map(doc => 
-        doc.id === newDoc.id 
-          ? {
-              ...doc,
-              status: 'completed',
-              summary: 'Document processed successfully with event information extracted',
-              extractedEvents: [
-                {
-                  title: 'Sample Event from ' + file.name,
-                  date: 'March 20, 2024',
-                  time: '10:00 AM',
-                  location: 'Location TBD'
-                }
-              ]
-            }
-          : doc
-      ));
+      try {
+        // Read file content (simplified for demo)
+        const content = await readFileContent(file);
+        
+        // Process with AI service
+        const response = await aiService.analyzeDocument(content, file.name);
+        
+        // Update document with analysis results
+        setUploadedDocs(prev => prev.map(doc => 
+          doc.id === newDoc.id 
+            ? {
+                ...doc,
+                status: response.success ? 'completed' : 'error',
+                analysis: response.success ? response.data : undefined
+              }
+            : doc
+        ));
+        
+      } catch (error) {
+        console.error('Error processing document:', error);
+        setUploadedDocs(prev => prev.map(doc => 
+          doc.id === newDoc.id ? { ...doc, status: 'error' } : doc
+        ));
+      }
     }
     
     setIsUploading(false);
     // Reset file input
     event.target.value = '';
+  };
+
+  const readFileContent = async (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        // For demo purposes, return mock content based on file name
+        if (file.name.toLowerCase().includes('newsletter')) {
+          resolve('School newsletter with spring events, field trips, and important dates...');
+        } else if (file.name.toLowerCase().includes('permission')) {
+          resolve('Permission slip for field trip to museum on March 15th...');
+        } else {
+          resolve('Document content for AI analysis...');
+        }
+      };
+      reader.readAsText(file);
+    });
   };
 
   const getDocumentIcon = (type: string) => {
@@ -149,6 +194,22 @@ const DocumentUpload: React.FC = () => {
       default:
         return 'bg-gray-50 border-gray-200';
     }
+  };
+
+  const addEventToCalendar = (event: any) => {
+    const familyEvent = {
+      title: event.title,
+      date: event.date,
+      time: event.time,
+      location: event.location,
+      attendees: event.attendees || [],
+      type: event.type === 'deadline' ? 'school' : 
+            event.title.toLowerCase().includes('sports') ? 'sports' : 'school',
+      description: event.description
+    };
+    
+    onAddEvent(familyEvent);
+    alert(`Added "${event.title}" to calendar`);
   };
 
   return (
@@ -231,34 +292,68 @@ const DocumentUpload: React.FC = () => {
                 </div>
               </div>
 
-              {doc.summary && (
-                <div className="bg-white rounded-lg p-3 mb-3">
-                  <p className="text-sm text-gray-700">{doc.summary}</p>
-                </div>
-              )}
+              {doc.analysis && (
+                <>
+                  <div className="bg-white rounded-lg p-3 mb-3">
+                    <h5 className="font-medium text-gray-900 mb-1">Summary</h5>
+                    <p className="text-sm text-gray-700">{doc.analysis.summary}</p>
+                    <div className="mt-2 text-xs text-green-600">
+                      Confidence: {(doc.analysis.confidence * 100).toFixed(0)}%
+                    </div>
+                  </div>
 
-              {doc.extractedEvents && doc.extractedEvents.length > 0 && (
-                <div className="space-y-2">
-                  <h5 className="font-medium text-gray-900">Extracted Events:</h5>
-                  {doc.extractedEvents.map((event, index) => (
-                    <div key={index} className="bg-white rounded-lg p-3 border border-gray-200">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h6 className="font-medium text-gray-900 mb-1">{event.title}</h6>
-                          <div className="text-sm text-gray-600">
-                            <div className="flex items-center mb-1">
-                              <Calendar className="w-4 h-4 mr-1" />
-                              {event.date} at {event.time}
+                  {doc.analysis.extractedEvents.length > 0 && (
+                    <div className="space-y-2">
+                      <h5 className="font-medium text-gray-900">Extracted Events:</h5>
+                      {doc.analysis.extractedEvents.map((event, index) => (
+                        <div key={index} className="bg-white rounded-lg p-3 border border-gray-200">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h6 className="font-medium text-gray-900 mb-1">{event.title}</h6>
+                              <div className="text-sm text-gray-600">
+                                <div className="flex items-center mb-1">
+                                  <Calendar className="w-4 h-4 mr-1" />
+                                  {event.date} at {event.time}
+                                </div>
+                                <div>{event.location}</div>
+                                <div className="text-xs text-green-600 mt-1">
+                                  Confidence: {(event.confidence * 100).toFixed(0)}%
+                                </div>
+                              </div>
                             </div>
-                            <div>{event.location}</div>
+                            <button 
+                              onClick={() => addEventToCalendar(event)}
+                              className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors"
+                            >
+                              Add to Calendar
+                            </button>
                           </div>
                         </div>
-                        <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors">
-                          Add to Calendar
-                        </button>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+
+                  {doc.analysis.actionItems.length > 0 && (
+                    <div className="mt-3">
+                      <h5 className="font-medium text-gray-900 mb-2">Action Items:</h5>
+                      <ul className="text-sm text-gray-700 space-y-1">
+                        {doc.analysis.actionItems.map((item, index) => (
+                          <li key={index} className="flex items-center">
+                            <div className="w-2 h-2 bg-orange-400 rounded-full mr-2"></div>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {doc.status === 'error' && (
+                <div className="bg-white rounded-lg p-3">
+                  <p className="text-red-700 text-sm">
+                    Failed to process document. Please try uploading again or check the file format.
+                  </p>
                 </div>
               )}
             </div>
