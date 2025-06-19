@@ -37,12 +37,14 @@ export class AIAgentClient {
   private ws: WebSocket | null = null;
   private isConnected = false;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
+  private maxReconnectAttempts = 3;
+  private reconnectDelay = 2000;
   private messageQueue: AIAgentMessage[] = [];
   private tokenBalance: TokenBalance;
   private tokenUsageHistory: TokenUsage[] = [];
   private eventListeners: Map<string, Function[]> = new Map();
+  private connectionEnabled = false;
+  private fallbackMode = false;
 
   constructor() {
     this.tokenBalance = {
@@ -53,7 +55,24 @@ export class AIAgentClient {
     };
     
     this.loadTokenData();
-    this.connect();
+    this.checkConnectionConfig();
+  }
+
+  private checkConnectionConfig(): void {
+    const wsUrl = import.meta.env.VITE_AI_AGENT_WS_URL;
+    
+    // Only attempt connection if URL is properly configured and not a placeholder
+    if (wsUrl && 
+        wsUrl !== 'wss://your-ai-agent-server.com/ws' && 
+        wsUrl !== 'wss://localhost:8080/ai-agent' &&
+        !wsUrl.includes('placeholder')) {
+      this.connectionEnabled = true;
+      this.connect();
+    } else {
+      console.log('AI Agent WebSocket not configured or using placeholder URL. Running in fallback mode.');
+      this.fallbackMode = true;
+      this.emit('fallback_mode', { reason: 'No valid WebSocket URL configured' });
+    }
   }
 
   private loadTokenData(): void {
@@ -82,15 +101,19 @@ export class AIAgentClient {
   }
 
   private connect(): void {
+    if (!this.connectionEnabled) {
+      return;
+    }
+
     try {
-      // Use secure WebSocket protocol
-      const wsUrl = import.meta.env.VITE_AI_AGENT_WS_URL || 'wss://localhost:8080/ai-agent';
+      const wsUrl = import.meta.env.VITE_AI_AGENT_WS_URL;
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
         console.log('AI Agent WebSocket connected');
         this.isConnected = true;
         this.reconnectAttempts = 0;
+        this.fallbackMode = false;
         this.processMessageQueue();
         this.emit('connected', { timestamp: new Date() });
       };
@@ -112,29 +135,39 @@ export class AIAgentClient {
       };
 
       this.ws.onerror = (error) => {
-        console.error('AI Agent WebSocket error:', error);
-        this.emit('error', { error, timestamp: new Date() });
+        console.warn('AI Agent WebSocket connection failed. Switching to fallback mode.');
+        this.fallbackMode = true;
+        this.emit('connection_failed', { error, timestamp: new Date() });
       };
 
     } catch (error) {
-      console.error('Error connecting to AI Agent:', error);
-      this.attemptReconnect();
+      console.warn('Error connecting to AI Agent. Switching to fallback mode:', error);
+      this.fallbackMode = true;
+      this.emit('connection_failed', { error, timestamp: new Date() });
     }
   }
 
   private attemptReconnect(): void {
+    if (!this.connectionEnabled) {
+      return;
+    }
+
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
       const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
       
-      console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
+      console.log(`Attempting to reconnect to AI Agent in ${delay}ms (attempt ${this.reconnectAttempts})`);
       
       setTimeout(() => {
         this.connect();
       }, delay);
     } else {
-      console.error('Max reconnection attempts reached');
-      this.emit('max_reconnect_attempts', { attempts: this.reconnectAttempts });
+      console.log('Max AI Agent reconnection attempts reached. Switching to fallback mode.');
+      this.fallbackMode = true;
+      this.emit('fallback_mode', { 
+        reason: 'Max reconnection attempts reached',
+        attempts: this.reconnectAttempts 
+      });
     }
   }
 
@@ -204,15 +237,61 @@ export class AIAgentClient {
   private sendMessage(message: AIAgentMessage): void {
     if (this.isConnected && this.ws) {
       this.ws.send(JSON.stringify(message));
-    } else {
+    } else if (!this.fallbackMode) {
       this.messageQueue.push(message);
+    }
+  }
+
+  // Fallback processing using local AI service
+  private async processFallback(operation: string, data: any): Promise<any> {
+    console.log(`Processing ${operation} using fallback AI service`);
+    
+    switch (operation) {
+      case 'process_voice':
+        // Use browser's speech recognition or return mock data
+        return {
+          text: "Voice processing not available without AI agent connection",
+          confidence: 0,
+          events: []
+        };
+      
+      case 'process_document':
+        // Basic document processing
+        return {
+          summary: `Document "${data.fileName}" uploaded successfully. AI processing not available.`,
+          events: [],
+          status: 'processed_locally'
+        };
+      
+      default:
+        // Use local AI service for text processing
+        if (data.text) {
+          try {
+            return await aiService.processText(data.text, operation);
+          } catch (error) {
+            console.error('Fallback processing error:', error);
+            return {
+              error: 'AI processing temporarily unavailable',
+              fallback: true
+            };
+          }
+        }
+        
+        return {
+          error: 'Operation not supported in fallback mode',
+          fallback: true
+        };
     }
   }
 
   // Public API Methods
   public async processVoiceData(audioData: Blob, options: any = {}): Promise<any> {
-    if (!this.canMakeRequest(50)) { // Estimate 50 tokens for voice processing
+    if (!this.canMakeRequest(50)) {
       throw new Error('Insufficient token balance for voice processing');
+    }
+
+    if (this.fallbackMode || !this.isConnected) {
+      return this.processFallback('process_voice', { audioData, options });
     }
 
     const message: AIAgentMessage = {
@@ -228,8 +307,8 @@ export class AIAgentClient {
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error('Voice processing timeout'));
-      }, 30000);
+        resolve(this.processFallback('process_voice', { audioData, options }));
+      }, 10000); // Shorter timeout, fallback faster
 
       const handler = (response: any) => {
         if (response.operation === 'process_voice') {
@@ -245,8 +324,16 @@ export class AIAgentClient {
   }
 
   public async processDocument(file: File, options: any = {}): Promise<any> {
-    if (!this.canMakeRequest(100)) { // Estimate 100 tokens for document processing
+    if (!this.canMakeRequest(100)) {
       throw new Error('Insufficient token balance for document processing');
+    }
+
+    if (this.fallbackMode || !this.isConnected) {
+      return this.processFallback('process_document', { 
+        fileName: file.name, 
+        fileType: file.type, 
+        options 
+      });
     }
 
     const message: AIAgentMessage = {
@@ -264,8 +351,12 @@ export class AIAgentClient {
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error('Document processing timeout'));
-      }, 60000);
+        resolve(this.processFallback('process_document', { 
+          fileName: file.name, 
+          fileType: file.type, 
+          options 
+        }));
+      }, 30000);
 
       const handler = (response: any) => {
         if (response.operation === 'process_document') {
@@ -281,10 +372,14 @@ export class AIAgentClient {
   }
 
   public async processText(text: string, operation: string, options: any = {}): Promise<any> {
-    const estimatedTokens = Math.ceil(text.length / 4); // Rough estimate
+    const estimatedTokens = Math.ceil(text.length / 4);
     
     if (!this.canMakeRequest(estimatedTokens)) {
       throw new Error('Insufficient token balance for text processing');
+    }
+
+    if (this.fallbackMode || !this.isConnected) {
+      return this.processFallback(operation, { text, options });
     }
 
     const message: AIAgentMessage = {
@@ -300,8 +395,8 @@ export class AIAgentClient {
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error('Text processing timeout'));
-      }, 30000);
+        resolve(this.processFallback(operation, { text, options }));
+      }, 15000);
 
       const handler = (response: any) => {
         if (response.operation === operation) {
@@ -418,6 +513,10 @@ export class AIAgentClient {
     return this.isConnected;
   }
 
+  public isInFallbackMode(): boolean {
+    return this.fallbackMode;
+  }
+
   public disconnect(): void {
     if (this.ws) {
       this.ws.close();
@@ -427,8 +526,24 @@ export class AIAgentClient {
   }
 
   public reconnect(): void {
+    if (!this.connectionEnabled) {
+      console.log('WebSocket connection not enabled. Check VITE_AI_AGENT_WS_URL configuration.');
+      return;
+    }
+    
     this.disconnect();
     this.reconnectAttempts = 0;
+    this.fallbackMode = false;
+    this.connect();
+  }
+
+  public enableConnection(wsUrl?: string): void {
+    if (wsUrl) {
+      // Temporarily override the URL for this session
+      (import.meta.env as any).VITE_AI_AGENT_WS_URL = wsUrl;
+    }
+    this.connectionEnabled = true;
+    this.fallbackMode = false;
     this.connect();
   }
 }
