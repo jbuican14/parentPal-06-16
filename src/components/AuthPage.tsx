@@ -126,14 +126,14 @@ const AuthPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <div className="bg-indigo-600 p-4 rounded-2xl w-fit mx-auto mb-6">
-            <Users className="w-12 h-12 text-white" />
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="bg-indigo-600 p-3 sm:p-4 rounded-2xl w-fit mx-auto mb-4 sm:mb-6">
+            <Users className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
             {isSignUp ? 'Join ParentPal' : 'Welcome Back'}
           </h1>
-          <p className="text-gray-600">
+          <p className="text-sm sm:text-base text-gray-600">
             {isSignUp 
               ? 'Create your account to start organizing your family life'
               : 'Sign in to access your family dashboard'
@@ -141,10 +141,10 @@ const AuthPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl p-8 shadow-lg">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-lg">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {errors.general && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 sm:p-4">
                 <p className="text-red-700 text-sm">{errors.general}</p>
               </div>
             )}
@@ -155,13 +155,13 @@ const AuthPage: React.FC = () => {
                   Full Name *
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                  <User className="absolute left-3 top-3 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                   <input
                     type="text"
                     id="name"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
-                    className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                    className={`w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-sm sm:text-base ${
                       errors.name ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="Enter your full name"
@@ -178,13 +178,13 @@ const AuthPage: React.FC = () => {
                 Email Address *
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                <Mail className="absolute left-3 top-3 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                 <input
                   type="email"
                   id="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                  className={`w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-sm sm:text-base ${
                     errors.email ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Enter your email address"
@@ -204,7 +204,7 @@ const AuthPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowPasswordGenerator(!showPasswordGenerator)}
-                    className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                    className="text-xs sm:text-sm text-indigo-600 hover:text-indigo-700 font-medium"
                   >
                     Generate Strong Password
                   </button>
@@ -216,7 +216,7 @@ const AuthPage: React.FC = () => {
                   id="password"
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
-                  className={`w-full pl-4 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                  className={`w-full pl-4 pr-10 sm:pr-12 py-2.5 sm:py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-sm sm:text-base ${
                     errors.password ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder={isSignUp ? "Create a secure password" : "Enter your password"}
@@ -226,7 +226,7 @@ const AuthPage: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
                 </button>
               </div>
               
@@ -268,7 +268,7 @@ const AuthPage: React.FC = () => {
                     id="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                    className={`w-full pl-4 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                    className={`w-full pl-4 pr-10 sm:pr-12 py-2.5 sm:py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-sm sm:text-base ${
                       errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="Confirm your password"
@@ -278,7 +278,7 @@ const AuthPage: React.FC = () => {
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
                   >
-                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </button>
                 </div>
                 {errors.confirmPassword && (
@@ -290,32 +290,32 @@ const AuthPage: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 sm:py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm sm:text-base"
             >
               {isLoading ? (
                 <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
                   {isSignUp ? 'Creating Account...' : 'Signing In...'}
                 </>
               ) : (
                 <>
                   {isSignUp ? 'Create Account' : 'Sign In'}
-                  <ArrowRight className="ml-2 w-5 h-5" />
+                  <ArrowRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5" />
                 </>
               )}
             </button>
           </form>
 
-          <div className="mt-6">
-            <div className="flex items-center text-sm text-gray-500 mb-4">
-              <Shield className="w-4 h-4 mr-2" />
-              <p>Your information is encrypted and secure</p>
+          <div className="mt-4 sm:mt-6">
+            <div className="flex items-center text-sm text-gray-500 mb-3 sm:mb-4">
+              <Shield className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
+              <p className="text-xs sm:text-sm">Your information is encrypted and secure</p>
             </div>
             
             <div className="text-center">
               <button
                 onClick={() => setIsSignUp(!isSignUp)}
-                className="text-indigo-600 hover:text-indigo-700 font-medium"
+                className="text-indigo-600 hover:text-indigo-700 font-medium text-sm sm:text-base"
               >
                 {isSignUp 
                   ? 'Already have an account? Sign in' 

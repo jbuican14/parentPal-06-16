@@ -74,15 +74,15 @@ const FamilySchedule: React.FC<FamilyScheduleProps> = ({
   const conflictEvents = events.filter(e => e.hasConflict);
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
         <div className="flex items-center">
-          <Calendar className="w-6 h-6 text-indigo-600 mr-2" />
-          <h2 className="text-xl font-semibold text-gray-900">Family Schedule</h2>
+          <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600 mr-2" />
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Family Schedule</h2>
         </div>
         <button 
           onClick={() => setShowAddForm(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center text-sm sm:text-base"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Event
@@ -91,14 +91,14 @@ const FamilySchedule: React.FC<FamilyScheduleProps> = ({
 
       {/* Conflict Alert */}
       {conflictEvents.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6">
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
           <div className="flex items-center">
-            <AlertTriangle className="w-5 h-5 text-orange-600 mr-2" />
-            <h3 className="font-semibold text-orange-800">
+            <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 mr-2" />
+            <h3 className="font-semibold text-orange-800 text-sm sm:text-base">
               {conflictEvents.length} Schedule Conflict{conflictEvents.length > 1 ? 's' : ''} Detected
             </h3>
           </div>
-          <p className="text-orange-700 mt-1 text-sm">
+          <p className="text-orange-700 mt-1 text-xs sm:text-sm">
             {conflictEvents.map(e => e.title).join(', ')} {conflictEvents.length > 1 ? 'have' : 'has'} scheduling conflicts. 
             Would you like to reschedule?
           </p>
@@ -107,12 +107,12 @@ const FamilySchedule: React.FC<FamilyScheduleProps> = ({
               <button
                 key={event.id}
                 onClick={() => resolveConflict(event.id)}
-                className="bg-orange-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors"
+                className="bg-orange-600 text-white px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm font-medium hover:bg-orange-700 transition-colors"
               >
                 Resolve {event.title}
               </button>
             ))}
-            <button className="bg-white border border-orange-300 text-orange-700 px-3 py-1 rounded-lg text-sm font-medium hover:bg-orange-50 transition-colors">
+            <button className="bg-white border border-orange-300 text-orange-700 px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm font-medium hover:bg-orange-50 transition-colors">
               Dismiss All
             </button>
           </div>
@@ -120,12 +120,12 @@ const FamilySchedule: React.FC<FamilyScheduleProps> = ({
       )}
 
       {/* Events by Date */}
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {Object.entries(groupedEvents).map(([date, dateEvents]) => (
           <div key={date}>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-              {date}
-              <span className="ml-2 text-sm font-normal text-gray-500">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 flex flex-col sm:flex-row sm:items-center">
+              <span>{date}</span>
+              <span className="text-xs sm:text-sm font-normal text-gray-500 sm:ml-2">
                 ({dateEvents.length} event{dateEvents.length > 1 ? 's' : ''})
               </span>
             </h3>
@@ -133,54 +133,56 @@ const FamilySchedule: React.FC<FamilyScheduleProps> = ({
               {dateEvents.map((event) => (
                 <div
                   key={event.id}
-                  className={`p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md ${getEventColor(event.type)} ${
+                  className={`p-3 sm:p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md ${getEventColor(event.type)} ${
                     event.hasConflict ? 'ring-2 ring-orange-300' : ''
                   }`}
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3 space-y-2 sm:space-y-0">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center mb-1">
-                        <h4 className="font-semibold text-gray-900">{event.title}</h4>
+                        <h4 className="font-semibold text-gray-900 truncate">{event.title}</h4>
                         {event.hasConflict && (
-                          <AlertTriangle className="w-4 h-4 text-orange-500 ml-2" />
+                          <AlertTriangle className="w-4 h-4 text-orange-500 ml-2 flex-shrink-0" />
                         )}
                       </div>
-                      <div className="flex items-center text-sm text-gray-600 mb-1">
-                        <Clock className="w-4 h-4 mr-1" />
-                        {event.time}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600 mb-2">
-                        <MapPin className="w-4 h-4 mr-1" />
-                        {event.location}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Users className="w-4 h-4 mr-1" />
-                        {event.attendees.join(', ')}
+                      <div className="space-y-1">
+                        <div className="flex items-center text-xs sm:text-sm text-gray-600">
+                          <Clock className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
+                          <span className="truncate">{event.time}</span>
+                        </div>
+                        <div className="flex items-center text-xs sm:text-sm text-gray-600">
+                          <MapPin className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
+                          <span className="truncate">{event.location}</span>
+                        </div>
+                        <div className="flex items-center text-xs sm:text-sm text-gray-600">
+                          <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
+                          <span className="truncate">{event.attendees.join(', ')}</span>
+                        </div>
                       </div>
                     </div>
-                    <span className="text-xs px-2 py-1 bg-white rounded-full border">
+                    <span className="text-xs px-2 py-1 bg-white rounded-full border self-start">
                       {getEventTypeLabel(event.type)}
                     </span>
                   </div>
                   
-                  <div className="flex space-x-2">
+                  <div className="flex flex-wrap gap-2">
                     <button 
                       onClick={() => setViewingEvent(event)}
-                      className="bg-white border border-gray-300 text-gray-700 py-1 px-3 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center"
+                      className="bg-white border border-gray-300 text-gray-700 py-1 px-2 sm:px-3 rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm font-medium flex items-center"
                     >
                       <Eye className="w-3 h-3 mr-1" />
                       View
                     </button>
                     <button 
                       onClick={() => setEditingEvent(event)}
-                      className="bg-white border border-gray-300 text-gray-700 py-1 px-3 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center"
+                      className="bg-white border border-gray-300 text-gray-700 py-1 px-2 sm:px-3 rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm font-medium flex items-center"
                     >
                       <Edit className="w-3 h-3 mr-1" />
                       Edit
                     </button>
                     <button 
                       onClick={() => onDeleteEvent(event.id)}
-                      className="bg-white border border-red-300 text-red-700 py-1 px-3 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium flex items-center"
+                      className="bg-white border border-red-300 text-red-700 py-1 px-2 sm:px-3 rounded-lg hover:bg-red-50 transition-colors text-xs sm:text-sm font-medium flex items-center"
                     >
                       <Trash2 className="w-3 h-3 mr-1" />
                       Delete
@@ -193,13 +195,13 @@ const FamilySchedule: React.FC<FamilyScheduleProps> = ({
         ))}
         
         {events.length === 0 && (
-          <div className="text-center py-12">
-            <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No events scheduled</h3>
-            <p className="text-gray-600 mb-4">Start by adding your first family event</p>
+          <div className="text-center py-8 sm:py-12">
+            <Calendar className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">No events scheduled</h3>
+            <p className="text-gray-600 mb-4 text-sm sm:text-base">Start by adding your first family event</p>
             <button 
               onClick={() => setShowAddForm(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base"
             >
               Add First Event
             </button>
@@ -210,24 +212,24 @@ const FamilySchedule: React.FC<FamilyScheduleProps> = ({
       {/* Event Detail Modal */}
       {viewingEvent && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">{viewingEvent.title}</h3>
+          <div className="bg-white rounded-2xl p-4 sm:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">{viewingEvent.title}</h3>
             <div className="space-y-3">
               <div className="flex items-center text-sm text-gray-600">
-                <Calendar className="w-4 h-4 mr-2" />
-                {viewingEvent.date}
+                <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
+                <span>{viewingEvent.date}</span>
               </div>
               <div className="flex items-center text-sm text-gray-600">
-                <Clock className="w-4 h-4 mr-2" />
-                {viewingEvent.time}
+                <Clock className="w-4 h-4 mr-2 flex-shrink-0" />
+                <span>{viewingEvent.time}</span>
               </div>
               <div className="flex items-center text-sm text-gray-600">
-                <MapPin className="w-4 h-4 mr-2" />
-                {viewingEvent.location}
+                <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
+                <span>{viewingEvent.location}</span>
               </div>
               <div className="flex items-center text-sm text-gray-600">
-                <Users className="w-4 h-4 mr-2" />
-                {viewingEvent.attendees.join(', ')}
+                <Users className="w-4 h-4 mr-2 flex-shrink-0" />
+                <span>{viewingEvent.attendees.join(', ')}</span>
               </div>
               {viewingEvent.description && (
                 <div className="mt-4">
@@ -236,10 +238,10 @@ const FamilySchedule: React.FC<FamilyScheduleProps> = ({
                 </div>
               )}
             </div>
-            <div className="mt-6 flex space-x-2">
+            <div className="mt-6 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
               <button
                 onClick={() => setViewingEvent(null)}
-                className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors text-sm sm:text-base"
               >
                 Close
               </button>
@@ -248,7 +250,7 @@ const FamilySchedule: React.FC<FamilyScheduleProps> = ({
                   setViewingEvent(null);
                   setEditingEvent(viewingEvent);
                 }}
-                className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors"
+                className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors text-sm sm:text-base"
               >
                 Edit Event
               </button>

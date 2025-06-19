@@ -103,16 +103,16 @@ const Dashboard: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <DashboardHeader user={profile} />
       
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-3 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="xl:col-span-2 space-y-4 sm:space-y-6">
             {/* Tab Navigation */}
             <div className="bg-white rounded-2xl p-2 shadow-lg">
-              <div className="flex space-x-1 overflow-x-auto">
+              <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
                 <button
                   onClick={() => setActiveTab('schedule')}
-                  className={`flex-shrink-0 py-3 px-4 rounded-xl font-medium transition-colors ${
+                  className={`flex-shrink-0 py-2 sm:py-3 px-3 sm:px-4 rounded-xl font-medium transition-colors text-sm sm:text-base ${
                     activeTab === 'schedule'
                       ? 'bg-indigo-600 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
@@ -122,53 +122,57 @@ const Dashboard: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setActiveTab('processor')}
-                  className={`flex-shrink-0 py-3 px-4 rounded-xl font-medium transition-colors ${
+                  className={`flex-shrink-0 py-2 sm:py-3 px-3 sm:px-4 rounded-xl font-medium transition-colors text-sm sm:text-base ${
                     activeTab === 'processor'
                       ? 'bg-indigo-600 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  AI Processor
+                  <span className="hidden sm:inline">AI Processor</span>
+                  <span className="sm:hidden">AI</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('parser')}
-                  className={`flex-shrink-0 py-3 px-4 rounded-xl font-medium transition-colors ${
+                  className={`flex-shrink-0 py-2 sm:py-3 px-3 sm:px-4 rounded-xl font-medium transition-colors text-sm sm:text-base ${
                     activeTab === 'parser'
                       ? 'bg-indigo-600 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  Smart Parser
+                  <span className="hidden sm:inline">Smart Parser</span>
+                  <span className="sm:hidden">Parser</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('voice')}
-                  className={`flex-shrink-0 py-3 px-4 rounded-xl font-medium transition-colors ${
+                  className={`flex-shrink-0 py-2 sm:py-3 px-3 sm:px-4 rounded-xl font-medium transition-colors text-sm sm:text-base ${
                     activeTab === 'voice'
                       ? 'bg-indigo-600 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  Voice Input
+                  Voice
                 </button>
                 <button
                   onClick={() => setActiveTab('documents')}
-                  className={`flex-shrink-0 py-3 px-4 rounded-xl font-medium transition-colors ${
+                  className={`flex-shrink-0 py-2 sm:py-3 px-3 sm:px-4 rounded-xl font-medium transition-colors text-sm sm:text-base ${
                     activeTab === 'documents'
                       ? 'bg-indigo-600 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  Documents
+                  <span className="hidden sm:inline">Documents</span>
+                  <span className="sm:hidden">Docs</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('assistant')}
-                  className={`flex-shrink-0 py-3 px-4 rounded-xl font-medium transition-colors ${
+                  className={`flex-shrink-0 py-2 sm:py-3 px-3 sm:px-4 rounded-xl font-medium transition-colors text-sm sm:text-base ${
                     activeTab === 'assistant'
                       ? 'bg-indigo-600 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  AI Assistant
+                  <span className="hidden sm:inline">AI Assistant</span>
+                  <span className="sm:hidden">Chat</span>
                 </button>
               </div>
             </div>
@@ -205,7 +209,7 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <TokenManager />
             <QuickActions 
               events={transformedEvents}
